@@ -220,7 +220,7 @@ class KimiCliProvider(BaseProvider):
                         "version: 1\n"
                         "agent:\n"
                         "  extend: default\n"
-                        f"  system_prompt_path: {prompt_file}\n"
+                        f"  system_prompt_path: {json.dumps(prompt_file)}\n"
                     )
                     agent_file = os.path.join(self._temp_dir, "agent.yaml")
                     with open(agent_file, "w") as f:

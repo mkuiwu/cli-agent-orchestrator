@@ -6,6 +6,7 @@ pattern matching, and cleanup — targeting >90% code coverage.
 
 import os
 import re
+import shlex
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -175,11 +176,32 @@ class TestKimiCliProviderInitialization:
 
         assert "--work-dir /tmp/project" in command
         assert "cd " not in command
-        agent_file = command.split("--agent-file ", 1)[1].split(" ", 1)[0]
-        agent_file = agent_file.strip("'\"")
+        command_parts = shlex.split(command)
+        agent_file = command_parts[command_parts.index("--agent-file") + 1]
         agent_yaml = Path(agent_file).read_text()
         assert "system_prompt_path: " in agent_yaml
         assert "./system.md" not in agent_yaml
+        provider.cleanup()
+
+    @patch("cli_agent_orchestrator.providers.kimi_cli.load_agent_profile")
+    @patch("cli_agent_orchestrator.providers.kimi_cli.tmux_client")
+    def test_build_kimi_command_quotes_system_prompt_path_in_agent_yaml(self, mock_tmux, mock_load):
+        """Test generated agent.yaml quotes absolute system prompt paths."""
+        mock_tmux.get_pane_working_directory.return_value = "/tmp/project"
+        mock_profile = MagicMock()
+        mock_profile.system_prompt = "You are a helpful assistant"
+        mock_profile.mcpServers = None
+        mock_load.return_value = mock_profile
+
+        provider = KimiCliProvider("term-1", "session-1", "window-1", agent_profile="developer")
+        provider._temp_dir = tempfile.mkdtemp(prefix="cao kimi ")
+
+        command = provider._build_kimi_command()
+
+        command_parts = shlex.split(command)
+        agent_file = command_parts[command_parts.index("--agent-file") + 1]
+        agent_yaml = Path(agent_file).read_text()
+        assert 'system_prompt_path: "' in agent_yaml
         provider.cleanup()
 
 

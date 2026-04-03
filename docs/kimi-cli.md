@@ -81,9 +81,11 @@ Agent profiles are **optional** for Kimi CLI. If provided, the provider:
 version: 1
 agent:
   extend: default
-  system_prompt_path: ./system.md
+  system_prompt_path: "/tmp/cao_kimi_xxx/system.md"
 ```
 
+The provider writes an absolute path into `system_prompt_path` so the generated
+agent file still works after Kimi switches to the requested `--work-dir`.
 Temp files are automatically cleaned up when the provider's `cleanup()` method is called.
 
 ## MCP Server Configuration
