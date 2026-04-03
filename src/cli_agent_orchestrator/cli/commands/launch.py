@@ -27,6 +27,11 @@ PROVIDERS_REQUIRING_WORKSPACE_ACCESS = {
     "--provider", default=DEFAULT_PROVIDER, help=f"Provider to use (default: {DEFAULT_PROVIDER})"
 )
 @click.option(
+    "--working-directory",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=str),
+    help="Working directory for the agent session (default: current directory).",
+)
+@click.option(
     "--allowed-tools",
     multiple=True,
     help="Override allowedTools (CAO format: execute_bash, fs_read, @cao-mcp-server). Repeatable.",
@@ -37,7 +42,7 @@ PROVIDERS_REQUIRING_WORKSPACE_ACCESS = {
     help="[DANGEROUS] Unrestricted tool access AND skip confirmation prompts. "
     "Agent can execute ANY command including aws, rm, curl.",
 )
-def launch(agents, session_name, headless, provider, allowed_tools, yolo):
+def launch(agents, session_name, headless, provider, working_directory, allowed_tools, yolo):
     """Launch cao session with specified agent profile."""
     try:
         # Validate provider
@@ -45,7 +50,10 @@ def launch(agents, session_name, headless, provider, allowed_tools, yolo):
             raise click.ClickException(
                 f"Invalid provider '{provider}'. Available providers: {', '.join(PROVIDERS)}"
             )
-        working_directory = os.path.realpath(os.getcwd())
+        if working_directory:
+            working_directory = os.path.realpath(working_directory)
+        else:
+            working_directory = os.path.realpath(os.getcwd())
 
         # Resolve allowedTools: --yolo > --allowed-tools CLI > profile/role defaults
         from cli_agent_orchestrator.utils.agent_profiles import load_agent_profile

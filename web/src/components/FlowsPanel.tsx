@@ -17,6 +17,15 @@ const SCHEDULE_PRESETS = [
 ]
 
 const CUSTOM_CRON_VALUE = '__custom__'
+const FALLBACK_PROVIDERS = [
+  'kiro_cli',
+  'claude_code',
+  'q_cli',
+  'codex',
+  'kimi_cli',
+  'gemini_cli',
+  'copilot_cli',
+]
 
 function cronToLabel(cron: string): string {
   return SCHEDULE_PRESETS.find(p => p.cron === cron)?.label || cron
@@ -392,7 +401,9 @@ export function FlowsPanel() {
                     value={provider}
                     onChange={setProvider}
                     placeholder="Default"
-                    options={providers.map(p => ({
+                    options={(providers.length > 0
+                      ? providers
+                      : FALLBACK_PROVIDERS.map(name => ({ name, binary: '', installed: true }))).map(p => ({
                       value: p.name,
                       label: p.name.replace(/_/g, ' '),
                       sublabel: !p.installed ? 'Not installed' : undefined,

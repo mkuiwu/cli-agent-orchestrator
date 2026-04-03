@@ -40,6 +40,34 @@ def test_launch_includes_working_directory():
         assert params["working_directory"] == os.path.realpath(os.getcwd())
 
 
+def test_launch_uses_explicit_working_directory():
+    """Test that --working-directory overrides the current directory."""
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        workdir = os.path.realpath("project")
+        os.mkdir(workdir)
+
+        with (
+            patch("cli_agent_orchestrator.cli.commands.launch.requests.post") as mock_post,
+            patch("cli_agent_orchestrator.cli.commands.launch.subprocess.run"),
+        ):
+            mock_post.return_value.json.return_value = {
+                "session_name": "test-session",
+                "name": "test-terminal",
+            }
+            mock_post.return_value.raise_for_status.return_value = None
+
+            result = runner.invoke(
+                launch,
+                ["--agents", "test-agent", "--working-directory", workdir, "--yolo"],
+            )
+
+            assert result.exit_code == 0
+            params = mock_post.call_args.kwargs["params"]
+            assert params["working_directory"] == workdir
+
+
 def test_launch_invalid_provider():
     """Test launch with invalid provider."""
     runner = CliRunner()

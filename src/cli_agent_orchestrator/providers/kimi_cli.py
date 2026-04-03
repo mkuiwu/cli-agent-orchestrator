@@ -168,11 +168,7 @@ class KimiCliProvider(BaseProvider):
         Uses shlex.join() for safe escaping of all arguments.
 
         Command structure:
-            cd <temp_dir> && TERM=xterm-256color kimi --yolo [--agent-file FILE] [--mcp-config JSON]
-
-        The ``cd`` is required because Kimi CLI v1.20.0+ enforces a per-directory
-        single-instance lock — only one kimi process can run in a given directory.
-        Each provider instance gets its own temp directory to avoid conflicts.
+            TERM=xterm-256color kimi --yolo [--work-dir DIR] [--agent-file FILE] [--mcp-config JSON]
 
         The ``TERM=xterm-256color`` override is needed because Kimi CLI v1.20.0+
         silently exits when TERM=tmux-256color (the tmux default).
@@ -182,11 +178,15 @@ class KimiCliProvider(BaseProvider):
         """
         command_parts = ["kimi", "--yolo"]
 
-        # Always create a temp directory for this instance.
-        # Kimi CLI v1.20.0+ has a per-directory single-instance lock, so each
-        # provider instance needs its own working directory.
+        # Temp directory is used only to hold generated agent files.
         if not self._temp_dir:
             self._temp_dir = tempfile.mkdtemp(prefix="cao_kimi_")
+
+        # Respect the pane's working directory so CAO's working_directory
+        # semantics remain consistent across providers.
+        working_dir = tmux_client.get_pane_working_directory(self.session_name, self.window_name)
+        if isinstance(working_dir, str) and working_dir.strip():
+            command_parts.extend(["--work-dir", working_dir])
 
         if self._agent_profile is not None:
             try:
@@ -220,7 +220,7 @@ class KimiCliProvider(BaseProvider):
                         "version: 1\n"
                         "agent:\n"
                         "  extend: default\n"
-                        "  system_prompt_path: ./system.md\n"
+                        f"  system_prompt_path: {prompt_file}\n"
                     )
                     agent_file = os.path.join(self._temp_dir, "agent.yaml")
                     with open(agent_file, "w") as f:
@@ -259,9 +259,8 @@ class KimiCliProvider(BaseProvider):
             except Exception as e:
                 raise ProviderError(f"Failed to load agent profile '{self._agent_profile}': {e}")
 
-        # cd to unique temp dir (per-directory lock) + set TERM for tmux compatibility
         kimi_cmd = shlex.join(command_parts)
-        return f"cd {shlex.quote(self._temp_dir)} && TERM=xterm-256color {kimi_cmd}"
+        return f"TERM=xterm-256color {kimi_cmd}"
 
     @classmethod
     def _ensure_mcp_timeout(cls) -> None:

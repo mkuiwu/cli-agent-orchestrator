@@ -122,7 +122,7 @@ Kimi CLI does not automatically forward parent shell environment variables to MC
 
 ### Provider Lifecycle
 
-1. **Initialize**: Create unique temp dir → set MCP timeout in `~/.kimi/config.toml` (if MCP servers) → wait for shell → send `cd <tempdir> && TERM=xterm-256color kimi --yolo` → wait for IDLE or COMPLETED (up to 120s)
+1. **Initialize**: Create temp files for generated agent config → set MCP timeout in `~/.kimi/config.toml` (if MCP servers) → wait for shell → send `TERM=xterm-256color kimi --yolo --work-dir <working_directory>` → wait for IDLE or COMPLETED (up to 120s)
 2. **Status Detection**: Check bottom 50 lines for idle prompt pattern (end-of-line anchored)
 3. **Message Extraction**: Line-based approach mapping raw and clean output for thinking filtering
 4. **Exit**: Send `/exit` command
@@ -151,7 +151,7 @@ The provider handles several v1.20.0 behavioral changes:
 - **Prompt format**: Changed from `user@dirname💫` to bare `💫`. The idle pattern uses an optional prefix.
 - **Input display**: Removed bordered input boxes (`╭─...╰─`). User input now appears inline on the prompt line (`💫 message text`).
 - **TERM variable**: Kimi CLI silently exits when `TERM=tmux-256color` (the tmux default). The provider overrides with `TERM=xterm-256color`.
-- **Per-directory lock**: Only one Kimi instance can run in a given directory. Each provider instance uses its own temp directory via `cd`.
+- **Working directory**: CAO now passes the tmux pane directory via `--work-dir` so Kimi respects the requested project path. Temporary files are still written to a CAO-managed temp directory, but the process cwd is no longer overridden.
 
 ## E2E Testing
 

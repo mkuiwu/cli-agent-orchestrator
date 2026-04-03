@@ -148,15 +148,38 @@ class TestKimiCliProviderInitialization:
     @patch("cli_agent_orchestrator.providers.kimi_cli.wait_for_shell", return_value=True)
     @patch("cli_agent_orchestrator.providers.kimi_cli.tmux_client")
     def test_initialize_sends_kimi_command(self, mock_tmux, mock_wait_shell, mock_wait_status):
-        """Test that initialize sends the kimi --yolo command with cd and TERM override."""
+        """Test that initialize sends the kimi --yolo command with TERM override."""
+        mock_tmux.get_pane_working_directory.return_value = "/tmp/project"
         provider = KimiCliProvider("term-1", "session-1", "window-1")
         provider.initialize()
 
         call_args = mock_tmux.send_keys.call_args
         command = call_args[0][2]
-        assert "cd " in command
         assert "TERM=xterm-256color" in command
         assert "kimi --yolo" in command
+        assert "--work-dir /tmp/project" in command
+        provider.cleanup()
+
+    @patch("cli_agent_orchestrator.providers.kimi_cli.load_agent_profile")
+    @patch("cli_agent_orchestrator.providers.kimi_cli.tmux_client")
+    def test_build_kimi_command_uses_absolute_system_prompt_path(self, mock_tmux, mock_load):
+        """Test generated agent.yaml does not rely on cwd-relative system.md."""
+        mock_tmux.get_pane_working_directory.return_value = "/tmp/project"
+        mock_profile = MagicMock()
+        mock_profile.system_prompt = "You are a helpful assistant"
+        mock_profile.mcpServers = None
+        mock_load.return_value = mock_profile
+
+        provider = KimiCliProvider("term-1", "session-1", "window-1", agent_profile="developer")
+        command = provider._build_kimi_command()
+
+        assert "--work-dir /tmp/project" in command
+        assert "cd " not in command
+        agent_file = command.split("--agent-file ", 1)[1].split(" ", 1)[0]
+        agent_file = agent_file.strip("'\"")
+        agent_yaml = Path(agent_file).read_text()
+        assert "system_prompt_path: " in agent_yaml
+        assert "./system.md" not in agent_yaml
         provider.cleanup()
 
 
@@ -542,13 +565,16 @@ class TestKimiCliProviderMessageExtraction:
 class TestKimiCliProviderBuildCommand:
     """Tests for KimiCliProvider._build_kimi_command()."""
 
-    def test_build_command_no_profile(self):
-        """Test command without agent profile includes cd, TERM override, and kimi --yolo."""
+    @patch("cli_agent_orchestrator.providers.kimi_cli.tmux_client")
+    def test_build_command_no_profile(self, mock_tmux):
+        """Test command without agent profile preserves pane working directory."""
+        mock_tmux.get_pane_working_directory.return_value = "/tmp/project"
         provider = KimiCliProvider("term-1", "session-1", "window-1")
         command = provider._build_kimi_command()
-        assert "cd " in command
+        assert "cd " not in command
         assert "TERM=xterm-256color" in command
         assert "kimi --yolo" in command
+        assert "--work-dir /tmp/project" in command
         assert provider._temp_dir is not None
         provider.cleanup()
 
@@ -617,7 +643,8 @@ class TestKimiCliProviderBuildCommand:
         with open(os.path.join(provider._temp_dir, "agent.yaml")) as f:
             content = f.read()
             assert "extend: default" in content
-            assert "system_prompt_path: ./system.md" in content
+            assert "system_prompt_path: " in content
+            assert "./system.md" not in content
 
         # Cleanup
         provider.cleanup()
