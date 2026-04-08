@@ -64,11 +64,23 @@ class ClaudeCodeProvider(BaseProvider):
         Returns properly escaped shell command string that can be safely sent via tmux.
         Uses shlex.join() to handle multiline strings and special characters correctly.
         """
+        # Allow custom command via environment variable (e.g., "mc --code --model glm-5")
+        # If CAO_CLAUDE_CODE_CMD is set, use it as the base command prefix.
+        # Otherwise, use the default "claude" command.
+        import os
+
+        custom_cmd = os.environ.get("CAO_CLAUDE_CODE_CMD", "")
+        if custom_cmd:
+            # Parse custom command into parts
+            command_parts = shlex.split(custom_cmd)
+        else:
+            command_parts = ["claude"]
+
         # --dangerously-skip-permissions: bypass the workspace trust dialog and
         # tool permission prompts. CAO already confirms workspace access during
         # `cao launch` (or `--yolo`), so re-prompting each spawned agent
         # (supervisor and worker) is redundant and blocks handoff/assign flows.
-        command_parts = ["claude", "--dangerously-skip-permissions"]
+        command_parts.append("--dangerously-skip-permissions")
 
         if self._agent_profile is not None:
             try:
