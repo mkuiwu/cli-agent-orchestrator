@@ -98,8 +98,8 @@ class TestAgentProviders:
             "claude_code",
             "q_cli",
             "codex",
-            "kimi_cli",
             "gemini_cli",
+            "kimi_cli",
             "copilot_cli",
         }
         names = [p["name"] for p in data]
@@ -133,6 +133,9 @@ class TestAgentProviders:
         assert providers_dict["claude_code"]["installed"] is False
         assert providers_dict["q_cli"]["installed"] is False
         assert providers_dict["codex"]["installed"] is False
+        assert providers_dict["gemini_cli"]["installed"] is False
+        assert providers_dict["kimi_cli"]["installed"] is False
+        assert providers_dict["copilot_cli"]["installed"] is False
 
     def test_list_providers_has_binary_field(self, client):
         """Each provider entry has correct binary name."""
@@ -145,6 +148,9 @@ class TestAgentProviders:
         assert providers_dict["claude_code"]["binary"] == "claude"
         assert providers_dict["q_cli"]["binary"] == "q"
         assert providers_dict["codex"]["binary"] == "codex"
+        assert providers_dict["gemini_cli"]["binary"] == "gemini"
+        assert providers_dict["kimi_cli"]["binary"] == "kimi"
+        assert providers_dict["copilot_cli"]["binary"] == "copilot"
 
 
 # ── Sessions CRUD ────────────────────────────────────────────────────
